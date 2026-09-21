@@ -12,16 +12,13 @@ from .. import telegram_client as tg
 from ..config import SESSIONS_DIR, TRASH_DIR
 from ..database import get_db
 from ..models import Account, ActivityLog, Category, SpamCheck
+from ..session_paths import session_path as _session_path
 
 router = APIRouter(prefix="/accounts")
 
 
 def _redirect(msg: str, msg_type: str = "success", path: str = "/") -> RedirectResponse:
     return RedirectResponse(url=f"{path}?msg={msg}&msg_type={msg_type}", status_code=303)
-
-
-def _session_path(account: Account) -> str:
-    return str((SESSIONS_DIR / account.session_filename).with_suffix(""))
 
 
 @router.post("/upload")

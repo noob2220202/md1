@@ -7,7 +7,7 @@ from . import models  # noqa: F401
 from .config import AVATARS_DIR, BASE_DIR
 from .database import Base, SessionLocal, engine
 from .models import Category
-from .routers import accounts, categories, pages
+from .routers import accounts, categories, groups, pages
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,3 +32,4 @@ app.mount("/avatars", StaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 app.include_router(pages.router)
 app.include_router(accounts.router)
 app.include_router(categories.router)
+app.include_router(groups.router)

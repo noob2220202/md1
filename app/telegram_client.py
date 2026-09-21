@@ -1,7 +1,19 @@
 import asyncio
+import re
 
 from telethon import TelegramClient
+from telethon.errors import (
+    ChannelsTooMuchError,
+    FloodWaitError,
+    InviteHashExpiredError,
+    InviteHashInvalidError,
+    UserAlreadyParticipantError,
+    UserBannedInChannelError,
+    UsernameNotOccupiedError,
+)
 from telethon.tl.functions.account import UpdateProfileRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
 from .config import AVATARS_DIR, settings
@@ -119,5 +131,59 @@ async def run_spam_check(session_path: str) -> dict:
         text = messages[0].message if messages else ""
         result = classify_spambot_reply(text)
         return {"result": result, "raw_response": text}
+    finally:
+        await client.disconnect()
+
+
+def _parse_invite_link(link: str) -> tuple[str, str]:
+    value = link.strip()
+    value = re.sub(r"^https?://", "", value)
+    value = re.sub(r"^(t\.me|telegram\.me|telegram\.dog)/", "", value)
+    value = value.lstrip("@")
+
+    if value.startswith("joinchat/"):
+        return "private", value.split("joinchat/", 1)[1].split("?")[0]
+    if value.startswith("+"):
+        return "private", value[1:].split("?")[0]
+
+    username = value.split("/")[0].split("?")[0]
+    return "public", username
+
+
+async def join_group(session_path: str, link: str) -> dict:
+    client = make_client(session_path)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            raise TelegramConfigError("세션이 인증되지 않았습니다.")
+
+        kind, value = _parse_invite_link(link)
+        if not value:
+            return {"status": "invalid_link", "title": "", "detail": "링크를 확인해주세요"}
+
+        try:
+            if kind == "private":
+                updates = await client(ImportChatInviteRequest(value))
+                chat = updates.chats[0] if updates.chats else None
+            else:
+                entity = await client.get_entity(value)
+                await client(JoinChannelRequest(entity))
+                chat = entity
+            title = getattr(chat, "title", value) or value
+            return {"status": "joined", "title": title, "detail": ""}
+        except UserAlreadyParticipantError:
+            return {"status": "already_member", "title": "", "detail": ""}
+        except FloodWaitError as e:
+            return {"status": "flood_wait", "title": "", "detail": f"{e.seconds}초 후 다시 시도하세요"}
+        except (InviteHashExpiredError, InviteHashInvalidError):
+            return {"status": "invalid_link", "title": "", "detail": "초대 링크가 만료되었거나 유효하지 않습니다"}
+        except UsernameNotOccupiedError:
+            return {"status": "invalid_link", "title": "", "detail": "존재하지 않는 그룹/채널입니다"}
+        except ChannelsTooMuchError:
+            return {"status": "error", "title": "", "detail": "가입 가능한 채널/그룹 수를 초과했습니다"}
+        except UserBannedInChannelError:
+            return {"status": "error", "title": "", "detail": "이 채널에서 차단된 계정입니다"}
+        except Exception as e:
+            return {"status": "error", "title": "", "detail": str(e)}
     finally:
         await client.disconnect()

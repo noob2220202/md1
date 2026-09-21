@@ -36,3 +36,16 @@ function accountsPage() {
     },
   };
 }
+
+function toggleAllGroupAccounts(checked) {
+  document.querySelectorAll(".group-account-check").forEach((el) => (el.checked = checked));
+  updateGroupSelectedCount();
+}
+
+function updateGroupSelectedCount() {
+  const el = document.getElementById("groupSelectedCount");
+  if (!el) return;
+  el.textContent = document.querySelectorAll(".group-account-check:checked").length;
+}
+
+document.addEventListener("DOMContentLoaded", updateGroupSelectedCount);

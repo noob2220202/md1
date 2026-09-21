@@ -173,6 +173,10 @@ table.accounts-table { width: 100%; border-collapse: collapse; }
 .detail-meta { color: var(--text-faint); font-size: 13px; margin-top: 2px; }
 .detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
 
+.account-picker { display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto; border: 1px solid var(--border-soft); border-radius: 8px; padding: 6px; }
+.account-picker-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.account-picker-item:hover { background: rgba(255,255,255,0.03); }
+
 .log-item { padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 12.5px; color: var(--text-dim); }
 .log-item:last-child { border-bottom: none; }
 .log-time { color: var(--text-faint); font-size: 11.5px; }

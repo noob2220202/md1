@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}그룹 가입 · TeleOps{% endblock %}
+{% block page_title %}그룹 가입{% endblock %}
+
+{% block content %}
+<div class="detail-grid">
+<div>
+
+  <div class="section-card">
+    <div class="section-title">그룹 / 채널 가입</div>
+    <form method="post" action="/groups/join">
+      <div class="field">
+        <label>초대 링크 또는 사용자명</label>
+        <input class="text-input" type="text" name="invite_link"
+               placeholder="https://t.me/+AbCdEfGhIj 또는 https://t.me/mygroup" required style="width:100%;">
+      </div>
+
+      {% if accounts %}
+      <div class="field">
+        <label>가입할 계정 선택 (<span id="groupSelectedCount">0</span>개)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" class="btn btn-sm" onclick="toggleAllGroupAccounts(true)">전체 선택</button>
+          <button type="button" class="btn btn-sm" onclick="toggleAllGroupAccounts(false)">전체 해제</button>
+        </div>
+        <div class="account-picker">
+          {% for account in accounts %}
+          <label class="account-picker-item">
+            <input type="checkbox" class="checkbox group-account-check" name="account_ids"
+                   value="{{ account.id }}" checked onchange="updateGroupSelectedCount()">
+            {% if account.avatar_path %}
+            <img class="avatar" style="width:24px;height:24px;" src="{{ account.avatar_path }}">
+            {% else %}
+            <div class="avatar" style="width:24px;height:24px;font-size:11px;">{{ (account.display_name or "?")[0] }}</div>
+            {% endif %}
+            <span>{{ account.display_name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;">가입 시작</button>
+      <p class="hint" style="margin-top:8px;">계정마다 3초 간격으로 순차 실행됩니다. 계정 수가 많으면 시간이 걸릴 수 있어요.</p>
+      {% else %}
+      <p class="hint">등록된 계정이 없습니다. 먼저 계정을 추가해주세요.</p>
+      {% endif %}
+    </form>
+  </div>
+
+</div>
+<div>
+
+  <div class="section-card">
+    <div class="section-title">가입 기록</div>
+    <div style="max-height:520px;overflow-y:auto;">
+      {% for log in logs %}
+      <div class="log-item">
+        {% set label, cls = status_labels.get(log.status, ("알수없음", "trust-unknown")) %}
+        <span class="badge {{ cls }}">{{ label }}</span>
+        <strong>{{ log.account.display_name if log.account else "(삭제된 계정)" }}</strong>
+        <div class="log-time">{{ log.joined_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        <div style="margin-top:4px;color:var(--text-faint);">{{ log.group_title or log.invite_link }}</div>
+        {% if log.detail %}<div style="margin-top:2px;color:var(--text-faint);font-size:11.5px;">{{ log.detail }}</div>{% endif %}
+      </div>
+      {% else %}
+      <p class="hint">아직 가입 기록이 없습니다.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+</div>
+{% endblock %}

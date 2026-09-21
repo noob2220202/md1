@@ -51,6 +51,12 @@ class Account(Base):
     logs = relationship(
         "ActivityLog", back_populates="account", cascade="all, delete-orphan", order_by="desc(ActivityLog.created_at)"
     )
+    group_joins = relationship(
+        "GroupJoinLog",
+        back_populates="account",
+        cascade="all, delete-orphan",
+        order_by="desc(GroupJoinLog.joined_at)",
+    )
 
     @property
     def display_name(self) -> str:
@@ -92,3 +98,17 @@ class ActivityLog(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     account = relationship("Account", back_populates="logs")
+
+
+class GroupJoinLog(Base):
+    __tablename__ = "group_join_logs"
+
+    id = Column(Integer, primary_key=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"))
+    invite_link = Column(String, default="")
+    group_title = Column(String, default="")
+    status = Column(String, default="error")  # joined, already_member, invalid_link, flood_wait, error
+    detail = Column(Text, default="")
+    joined_at = Column(DateTime, default=dt.datetime.utcnow)
+
+    account = relationship("Account", back_populates="group_joins")

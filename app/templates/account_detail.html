@@ -103,6 +103,28 @@
   </div>
 
   <div class="section-card">
+    <div class="section-title">가입한 그룹</div>
+    {% for log in account.group_joins %}
+    <div class="log-item">
+      {% if log.status == "joined" %}
+      <span class="badge trust-clean">가입 완료</span>
+      {% elif log.status == "already_member" %}
+      <span class="badge trust-unknown">이미 가입됨</span>
+      {% elif log.status == "flood_wait" %}
+      <span class="badge trust-limited">대기 필요</span>
+      {% else %}
+      <span class="badge trust-banned">실패</span>
+      {% endif %}
+      <div style="margin-top:4px;">{{ log.group_title or log.invite_link }}</div>
+      <div class="log-time">{{ log.joined_at.strftime("%Y-%m-%d %H:%M") }}</div>
+      {% if log.detail %}<div style="margin-top:2px;color:var(--text-faint);">{{ log.detail }}</div>{% endif %}
+    </div>
+    {% else %}
+    <p class="hint">아직 가입한 그룹이 없습니다. <a href="/groups" style="color:var(--accent);">그룹 가입 페이지</a>에서 추가하세요.</p>
+    {% endfor %}
+  </div>
+
+  <div class="section-card">
     <div class="section-title">활동 로그</div>
     {% for log in account.logs %}
     <div class="log-item">
