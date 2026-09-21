@@ -112,3 +112,10 @@ class GroupJoinLog(Base):
     joined_at = Column(DateTime, default=dt.datetime.utcnow)
 
     account = relationship("Account", back_populates="group_joins")
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, default="")

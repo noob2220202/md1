@@ -40,6 +40,7 @@
     <button class="btn btn-sm" :disabled="selected.length===0" @click="openModal('bulkEdit')">✏️ 일괄 프로필 변경 (<span x-text="selected.length"></span>)</button>
     <button class="btn btn-sm" :disabled="selected.length===0" @click="openModal('bulkPhoto')">🖼 일괄 사진 변경</button>
     <button class="btn btn-sm" :disabled="selected.length===0" @click="submitForm('spamCheckForm')">🛡 스팸 체크</button>
+    <button class="btn btn-sm btn-danger" :disabled="selected.length===0" @click="if(confirm('선택한 계정의 모든 그룹/채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제를 실행할까요? 되돌릴 수 없습니다.')) submitForm('wipeForm')">🧨 초기화</button>
     <button class="btn btn-sm btn-danger" :disabled="selected.length===0" @click="if(confirm('선택한 계정을 삭제할까요? 세션 파일은 휴지통으로 이동됩니다.')) submitForm('deleteForm')">삭제</button>
   </div>
 
@@ -114,6 +115,7 @@
 
   <form id="deleteForm" method="post" action="/accounts/delete"></form>
   <form id="spamCheckForm" method="post" action="/accounts/spam-check/bulk"></form>
+  <form id="wipeForm" method="post" action="/accounts/wipe/bulk"></form>
 
   <div class="modal-backdrop" x-show="modal==='bulkEdit'" x-cloak style="display:none;">
     <div class="modal" @click.outside="closeModal()">
@@ -163,6 +165,12 @@
   <div class="modal">
     <h3>계정 추가</h3>
     <p class="hint">Telethon으로 생성된 .session 파일을 업로드하세요. 여러 개를 한 번에 선택할 수 있습니다.</p>
+    {% if auto_wipe %}
+    <p class="hint" style="color:var(--red);margin-bottom:16px;">
+      ⚠ 자동 초기화가 켜져 있어 추가되는 즉시 모든 그룹/채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제가 실행됩니다.
+      <a href="/settings" style="color:inherit;text-decoration:underline;">설정에서 끄기</a>
+    </p>
+    {% endif %}
     <form method="post" action="/accounts/upload" enctype="multipart/form-data">
       <div class="field">
         <input class="text-input" type="file" name="files" accept=".session" multiple required>

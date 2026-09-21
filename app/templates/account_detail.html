@@ -72,6 +72,10 @@
 
   <div class="section-card">
     <div class="section-title">위험 구역</div>
+    <form method="post" action="/accounts/{{ account.id }}/wipe" style="margin-bottom:10px;"
+          onsubmit="return confirm('모든 그룹/채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제를 지금 실행할까요? 되돌릴 수 없습니다.')">
+      <button class="btn btn-danger" type="submit" style="width:100%;">지금 전체 초기화 실행 (그룹/채널/대화/연락처)</button>
+    </form>
     <form method="post" action="/accounts/delete" onsubmit="return confirm('이 계정을 삭제하시겠습니까? 세션 파일은 휴지통 폴더로 이동됩니다.')">
       <input type="hidden" name="account_ids" value="{{ account.id }}">
       <button class="btn btn-danger" type="submit">계정 삭제</button>

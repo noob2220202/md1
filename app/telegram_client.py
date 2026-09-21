@@ -13,8 +13,10 @@ from telethon.errors import (
 )
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.contacts import DeleteContactsRequest, GetContactsRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
+from telethon.tl.types import Channel, Chat, User
 
 from .config import AVATARS_DIR, settings
 
@@ -185,5 +187,62 @@ async def join_group(session_path: str, link: str) -> dict:
             return {"status": "error", "title": "", "detail": "이 채널에서 차단된 계정입니다"}
         except Exception as e:
             return {"status": "error", "title": "", "detail": str(e)}
+    finally:
+        await client.disconnect()
+
+
+async def wipe_account(session_path: str) -> dict:
+    """모든 그룹/채널 탈퇴, 모든 개인 대화 삭제, 저장된 연락처 전체 삭제. 되돌릴 수 없습니다."""
+    client = make_client(session_path)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            raise TelegramConfigError("세션이 인증되지 않았습니다.")
+
+        left_groups = 0
+        left_channels = 0
+        deleted_chats = 0
+        errors: list[str] = []
+
+        async for dialog in client.iter_dialogs():
+            entity = dialog.entity
+            if isinstance(entity, User) and entity.is_self:
+                continue  # Saved Messages는 보존
+            label = getattr(entity, "title", None) or getattr(entity, "first_name", None) or str(dialog.id)
+            try:
+                await client.delete_dialog(entity)
+                if isinstance(entity, Channel):
+                    if entity.megagroup:
+                        left_groups += 1
+                    else:
+                        left_channels += 1
+                elif isinstance(entity, Chat):
+                    left_groups += 1
+                else:
+                    deleted_chats += 1
+                await asyncio.sleep(0.5)
+            except FloodWaitError as e:
+                errors.append(f"{label}: {e.seconds}초 대기 필요")
+                await asyncio.sleep(min(e.seconds, 30))
+            except Exception as e:
+                errors.append(f"{label}: {e}")
+
+        deleted_contacts = 0
+        try:
+            result = await client(GetContactsRequest(hash=0))
+            contact_ids = [u.id for u in getattr(result, "users", [])]
+            if contact_ids:
+                await client(DeleteContactsRequest(id=contact_ids))
+                deleted_contacts = len(contact_ids)
+        except Exception as e:
+            errors.append(f"연락처 삭제 실패: {e}")
+
+        return {
+            "left_groups": left_groups,
+            "left_channels": left_channels,
+            "deleted_chats": deleted_chats,
+            "deleted_contacts": deleted_contacts,
+            "errors": errors,
+        }
     finally:
         await client.disconnect()

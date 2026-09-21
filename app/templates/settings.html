@@ -25,4 +25,19 @@ TELEGRAM_API_HASH=your_api_hash</pre>
     2) 대시보드의 "계정 추가" 버튼으로 해당 .session 파일을 업로드하면 자동으로 프로필 정보를 가져옵니다.
   </p>
 </div>
+
+<div class="section-card" style="max-width:640px;">
+  <div class="section-title">계정 추가 시 자동 초기화</div>
+  <p class="hint" style="margin-bottom:14px;">
+    켜두면 계정을 추가할 때마다 <strong style="color:var(--red);">모든 그룹/채널 탈퇴, 모든 개인 대화 삭제,
+    저장된 연락처 전체 삭제</strong>가 자동으로 실행됩니다. 되돌릴 수 없는 작업이니 주의하세요.
+  </p>
+  <form method="post" action="/settings/auto-wipe">
+    <label style="display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;margin-bottom:16px;">
+      <input class="checkbox" type="checkbox" name="auto_wipe_on_add" {{ 'checked' if auto_wipe else '' }}
+             onchange="this.form.submit()">
+      계정 추가 시 자동 초기화 {{ '(켜짐)' if auto_wipe else '(꺼짐)' }}
+    </label>
+  </form>
+</div>
 {% endblock %}

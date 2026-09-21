@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from .. import settings_store
 from .. import telegram_client as tg
 from ..config import SESSIONS_DIR, TRASH_DIR
 from ..database import get_db
@@ -19,6 +20,18 @@ router = APIRouter(prefix="/accounts")
 
 def _redirect(msg: str, msg_type: str = "success", path: str = "/") -> RedirectResponse:
     return RedirectResponse(url=f"{path}?msg={msg}&msg_type={msg_type}", status_code=303)
+
+
+async def _wipe_and_log(account: Account, db: Session, action: str = "wipe") -> str:
+    result = await tg.wipe_account(_session_path(account))
+    summary = (
+        f"그룹 {result['left_groups']}개, 채널 {result['left_channels']}개, "
+        f"대화 {result['deleted_chats']}개, 연락처 {result['deleted_contacts']}명 삭제"
+    )
+    if result["errors"]:
+        summary += f" (오류 {len(result['errors'])}건)"
+    db.add(ActivityLog(account_id=account.id, action=action, detail=summary))
+    return summary
 
 
 @router.post("/upload")
@@ -44,6 +57,12 @@ async def upload_accounts(files: List[UploadFile] = File(...), db: Session = Dep
                 setattr(account, key, value)
             db.add(ActivityLog(account_id=account.id, action="added", detail="세션 파일 업로드로 계정 추가됨"))
             added += 1
+
+            if settings_store.get_bool_setting("auto_wipe_on_add"):
+                try:
+                    await _wipe_and_log(account, db, action="auto_wipe")
+                except Exception as e:
+                    db.add(ActivityLog(account_id=account.id, action="auto_wipe_failed", detail=str(e)))
         except Exception as e:
             account.status = "error"
             account.last_error = str(e)
@@ -51,6 +70,8 @@ async def upload_accounts(files: List[UploadFile] = File(...), db: Session = Dep
         db.commit()
 
     msg = f"{added}개 계정이 추가되었습니다"
+    if settings_store.get_bool_setting("auto_wipe_on_add") and added:
+        msg += " (그룹/채널/대화/연락처 자동 초기화 완료)"
     if failed:
         msg += f" (실패 {len(failed)}건: {'; '.join(failed)[:120]})"
     return _redirect(msg, "success" if not failed else "warning")
@@ -217,6 +238,39 @@ async def spam_check_bulk(request: Request, db: Session = Depends(get_db)):
         db.commit()
         await asyncio.sleep(2)
     return _redirect(f"스팸 체크 완료: 성공 {ok} / 실패 {fail}")
+
+
+@router.post("/{account_id}/wipe")
+async def wipe_single(account_id: int, db: Session = Depends(get_db)):
+    account = db.get(Account, account_id)
+    if not account:
+        return _redirect("계정을 찾을 수 없습니다", "error")
+    try:
+        summary = await _wipe_and_log(account, db, action="manual_wipe")
+        db.commit()
+        return _redirect(f"초기화 완료: {summary}", path=f"/accounts/{account_id}")
+    except Exception as e:
+        return _redirect(f"초기화 실패: {e}", "error", path=f"/accounts/{account_id}")
+
+
+@router.post("/wipe/bulk")
+async def wipe_bulk(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    ids = [int(v) for v in form.getlist("account_ids")]
+    ok, fail = 0, 0
+    for aid in ids:
+        account = db.get(Account, aid)
+        if not account:
+            continue
+        try:
+            await _wipe_and_log(account, db, action="manual_wipe")
+            ok += 1
+        except Exception as e:
+            account.last_error = str(e)
+            fail += 1
+        db.commit()
+        await asyncio.sleep(1)
+    return _redirect(f"일괄 초기화 완료: 성공 {ok} / 실패 {fail}")
 
 
 @router.post("/{account_id}/categories")

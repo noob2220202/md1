@@ -7,7 +7,7 @@ from . import models  # noqa: F401
 from .config import AVATARS_DIR, BASE_DIR
 from .database import Base, SessionLocal, engine
 from .models import Category
-from .routers import accounts, categories, groups, pages
+from .routers import accounts, categories, groups, pages, settings as settings_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,3 +33,4 @@ app.include_router(pages.router)
 app.include_router(accounts.router)
 app.include_router(categories.router)
 app.include_router(groups.router)
+app.include_router(settings_router.router)

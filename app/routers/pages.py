@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from .. import settings_store
 from ..database import get_db
 from ..models import Account, Category
 from ..templating import templates
@@ -58,6 +59,7 @@ def dashboard(
             "trust_labels": TRUST_LABELS,
             "active_category": category,
             "q": q or "",
+            "auto_wipe": settings_store.get_bool_setting("auto_wipe_on_add"),
         },
     )
 
@@ -85,7 +87,11 @@ def categories_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/settings")
 def settings_page(request: Request):
+    from .. import settings_store
     from ..config import settings as cfg
 
     configured = bool(cfg.telegram_api_id and cfg.telegram_api_hash)
-    return templates.TemplateResponse("settings.html", {"request": request, "configured": configured})
+    auto_wipe = settings_store.get_bool_setting("auto_wipe_on_add")
+    return templates.TemplateResponse(
+        "settings.html", {"request": request, "configured": configured, "auto_wipe": auto_wipe}
+    )
