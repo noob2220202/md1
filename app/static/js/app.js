@@ -49,3 +49,16 @@ function updateGroupSelectedCount() {
 }
 
 document.addEventListener("DOMContentLoaded", updateGroupSelectedCount);
+
+function toggleAllWarmupAccounts(checked) {
+  document.querySelectorAll(".warmup-account-check:not(:disabled)").forEach((el) => (el.checked = checked));
+  updateWarmupSelectedCount();
+}
+
+function updateWarmupSelectedCount() {
+  const el = document.getElementById("warmupSelectedCount");
+  if (!el) return;
+  el.textContent = document.querySelectorAll(".warmup-account-check:checked").length;
+}
+
+document.addEventListener("DOMContentLoaded", updateWarmupSelectedCount);

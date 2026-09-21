@@ -1,4 +1,5 @@
 import asyncio
+import random
 import re
 
 from telethon import TelegramClient
@@ -13,10 +14,10 @@ from telethon.errors import (
 )
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.contacts import DeleteContactsRequest, GetContactsRequest
+from telethon.tl.functions.contacts import DeleteContactsRequest, GetContactsRequest, ImportContactsRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest
-from telethon.tl.types import Channel, Chat, User
+from telethon.tl.types import Channel, Chat, InputPhoneContact, User
 
 from .config import AVATARS_DIR, settings
 
@@ -172,9 +173,16 @@ async def join_group(session_path: str, link: str) -> dict:
                 await client(JoinChannelRequest(entity))
                 chat = entity
             title = getattr(chat, "title", value) or value
-            return {"status": "joined", "title": title, "detail": ""}
+            chat_id = getattr(chat, "id", None)
+            return {"status": "joined", "title": title, "detail": "", "chat_id": chat_id}
         except UserAlreadyParticipantError:
-            return {"status": "already_member", "title": "", "detail": ""}
+            chat_id = None
+            try:
+                existing = await client.get_entity(value)
+                chat_id = getattr(existing, "id", None)
+            except Exception:
+                pass
+            return {"status": "already_member", "title": "", "detail": "", "chat_id": chat_id}
         except FloodWaitError as e:
             return {"status": "flood_wait", "title": "", "detail": f"{e.seconds}초 후 다시 시도하세요"}
         except (InviteHashExpiredError, InviteHashInvalidError):
@@ -244,5 +252,81 @@ async def wipe_account(session_path: str) -> dict:
             "deleted_contacts": deleted_contacts,
             "errors": errors,
         }
+    finally:
+        await client.disconnect()
+
+
+async def send_group_message(session_path: str, chat_id: str, text: str) -> None:
+    client = make_client(session_path)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            raise TelegramConfigError("세션이 인증되지 않았습니다.")
+        entity = await client.get_entity(int(chat_id))
+        await client.send_message(entity, text)
+    finally:
+        await client.disconnect()
+
+
+async def add_contact_and_message(session_path: str, target_phone: str, target_name: str, text: str) -> None:
+    client = make_client(session_path)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            raise TelegramConfigError("세션이 인증되지 않았습니다.")
+        if not target_phone:
+            raise RuntimeError("대상 계정에 전화번호 정보가 없습니다.")
+        result = await client(
+            ImportContactsRequest(
+                contacts=[
+                    InputPhoneContact(
+                        client_id=0, phone=target_phone, first_name=target_name or "Friend", last_name=""
+                    )
+                ]
+            )
+        )
+        if not result.users:
+            raise RuntimeError("대상 계정을 연락처에서 찾을 수 없습니다 (전화번호를 확인하세요).")
+        entity = result.users[0]
+        await client.send_message(entity, text)
+    finally:
+        await client.disconnect()
+
+
+async def check_and_auto_reply(session_path: str, reply_pool_text: str, skip_peer_ids: set) -> list:
+    pool = [line.strip() for line in (reply_pool_text or "").splitlines() if line.strip()]
+    if not pool:
+        pool = ["네 안녕하세요 :)"]
+
+    client = make_client(session_path)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            raise TelegramConfigError("세션이 인증되지 않았습니다.")
+
+        replied = []
+        async for dialog in client.iter_dialogs(limit=40):
+            if not dialog.is_user or dialog.unread_count <= 0:
+                continue
+            entity = dialog.entity
+            if getattr(entity, "bot", False) or getattr(entity, "is_self", False):
+                continue
+            peer_key = str(entity.id)
+            if peer_key in skip_peer_ids:
+                try:
+                    await client.send_read_acknowledge(entity)
+                except Exception:
+                    pass
+                continue
+            text = random.choice(pool)
+            try:
+                await client.send_message(entity, text)
+                await client.send_read_acknowledge(entity)
+            except Exception:
+                continue
+            peer_name = getattr(entity, "first_name", "") or getattr(entity, "username", "") or peer_key
+            replied.append({"peer_id": peer_key, "peer_name": peer_name, "text": text})
+            await asyncio.sleep(1)
+        return replied
     finally:
         await client.disconnect()

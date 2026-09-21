@@ -15,7 +15,10 @@
       {% if account.username %}@{{ account.username }} · {% endif %}{{ account.phone or "전화번호 없음" }}
     </div>
   </div>
-  <div style="margin-left:auto;">
+  <div style="margin-left:auto;display:flex;gap:8px;">
+    {% if account.auto_reply_enabled %}
+    <span class="badge trust-clean" style="font-size:13px;padding:6px 14px;">자동 답장 켜짐</span>
+    {% endif %}
     {% set label, cls = trust_labels.get(account.trust_status, trust_labels["unknown"]) %}
     <span class="badge {{ cls }}" style="font-size:13px;padding:6px 14px;">{{ label }}</span>
   </div>
@@ -125,6 +128,27 @@
     </div>
     {% else %}
     <p class="hint">아직 가입한 그룹이 없습니다. <a href="/groups" style="color:var(--accent);">그룹 가입 페이지</a>에서 추가하세요.</p>
+    {% endfor %}
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">데우기 참여 현황</div>
+    {% for p in account.warmup_participations %}
+    <div class="log-item">
+      {% if p.status == "completed" %}
+      <span class="badge trust-clean">완료</span>
+      {% elif p.status == "failed" %}
+      <span class="badge trust-banned">실패</span>
+      {% elif p.status == "cancelled" %}
+      <span class="badge trust-unknown">취소됨</span>
+      {% else %}
+      <span class="badge trust-limited">진행중 ({{ p.campaign.day }}일차 / 7일차)</span>
+      {% endif %}
+      <div style="margin-top:4px;">{{ p.campaign.group_link }}</div>
+      <div class="log-time">메시지 {{ p.message_count or 0 }}개 전송{% if p.error %} · {{ p.error }}{% endif %}</div>
+    </div>
+    {% else %}
+    <p class="hint">데우기에 참여한 적이 없습니다. <a href="/warmup" style="color:var(--accent);">데우기 페이지</a>에서 시작하세요.</p>
     {% endfor %}
   </div>
 

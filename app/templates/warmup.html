@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}데우기 · TeleOps{% endblock %}
+{% block page_title %}데우기{% endblock %}
+
+{% block content %}
+<div class="detail-grid">
+<div>
+
+  <div class="section-card">
+    <div class="section-title">새 데우기 시작</div>
+    <p class="hint" style="margin-bottom:14px;">
+      1일차: 랜덤 간격으로 그룹 가입 → 2~3일차: 그룹에서 랜덤 메시지 대화 → 4일차: 랜덤 한 명에게 연락처추가+DM (상대는 맞연락처추가+답장) →
+      5일차: DM 대상 한 명 더 추가 → 6~7일차: 그룹 대화 유지 후 종료. <strong>서버가 계속 실행 중이어야</strong> 예정된 작업이 실행됩니다.
+    </p>
+    <form method="post" action="/warmup/create">
+      <div class="field">
+        <label>대상 그룹 초대 링크</label>
+        <input class="text-input" type="text" name="group_link" placeholder="https://t.me/+AbCdEfGhIj 또는 https://t.me/mygroup" required style="width:100%;">
+      </div>
+
+      <div class="field">
+        <label>그룹 대화 메시지 풀 (한 줄에 하나씩, 2~7일차에 랜덤으로 사용)</label>
+        <textarea class="text-input" name="group_messages" rows="4" style="width:100%;" required
+          placeholder="다들 뭐하세요&#10;오늘 날씨 좋네요&#10;ㅋㅋㅋㅋ&#10;그거 재밌겠다"></textarea>
+      </div>
+
+      <div class="field">
+        <label>DM 시작 메시지 풀 (4~5일차, 비워두면 그룹 메시지 풀 사용)</label>
+        <textarea class="text-input" name="dm_messages" rows="3" style="width:100%;"
+          placeholder="안녕하세요! 그룹에서 뵀네요&#10;반갑습니다 :)"></textarea>
+      </div>
+
+      <div class="field">
+        <label>답장 / 자동응답 메시지 풀 (DM 답장 및 데우기 완료 후 자동응답에 사용, 비워두면 그룹 메시지 풀 사용)</label>
+        <textarea class="text-input" name="reply_messages" rows="3" style="width:100%;"
+          placeholder="네 안녕하세요 :)&#10;반갑습니다!"></textarea>
+      </div>
+
+      <div style="display:flex;gap:12px;">
+        <div class="field" style="flex:1;">
+          <label>메시지 최소 간격(분)</label>
+          <input class="text-input" type="number" name="interval_min" value="30" min="1" style="width:100%;">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>메시지 최대 간격(분)</label>
+          <input class="text-input" type="number" name="interval_max" value="180" min="1" style="width:100%;">
+        </div>
+      </div>
+
+      {% if accounts %}
+      <div class="field">
+        <label>참여 계정 선택 (<span id="warmupSelectedCount">0</span>개, 최소 2개)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" class="btn btn-sm" onclick="toggleAllWarmupAccounts(true)">전체 선택</button>
+          <button type="button" class="btn btn-sm" onclick="toggleAllWarmupAccounts(false)">전체 해제</button>
+        </div>
+        <div class="account-picker">
+          {% for account in accounts %}
+          <label class="account-picker-item" style="{{ 'opacity:.4;' if account.id in busy_account_ids else '' }}">
+            <input type="checkbox" class="checkbox warmup-account-check" name="account_ids"
+                   value="{{ account.id }}" onchange="updateWarmupSelectedCount()"
+                   {{ 'disabled' if account.id in busy_account_ids else '' }}>
+            {% if account.avatar_path %}
+            <img class="avatar" style="width:24px;height:24px;" src="{{ account.avatar_path }}">
+            {% else %}
+            <div class="avatar" style="width:24px;height:24px;font-size:11px;">{{ (account.display_name or "?")[0] }}</div>
+            {% endif %}
+            <span>{{ account.display_name }}</span>
+            {% if account.id in busy_account_ids %}<span class="hint">(다른 데우기 진행 중)</span>{% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;">데우기 시작</button>
+      {% else %}
+      <p class="hint">등록된 계정이 없습니다. 먼저 계정을 추가해주세요.</p>
+      {% endif %}
+    </form>
+  </div>
+
+</div>
+<div>
+
+  {% for item in campaigns_view %}
+  {% set c = item.campaign %}
+  <div class="section-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div>
+        <span class="badge {{ item.status_label[1] }}">{{ item.status_label[0] }}</span>
+        <strong style="margin-left:6px;">{{ c.group_link }}</strong>
+      </div>
+      {% if c.status == "running" %}
+      <form method="post" action="/warmup/{{ c.id }}/cancel" onsubmit="return confirm('이 데우기를 취소할까요?')">
+        <button class="btn btn-sm btn-danger" type="submit">취소</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div class="progress-bar"><div class="progress-bar-fill" style="width:{{ (c.day / total_days * 100) | round(1) }}%;"></div></div>
+      <div class="hint" style="margin-top:4px;">
+        {{ c.day }}일차 / {{ total_days }}일차
+        {% if item.next_day_at %} · 다음 단계 전환: {{ item.next_day_at.strftime("%m-%d %H:%M") }}{% endif %}
+        · 시작: {{ c.started_at.strftime("%Y-%m-%d %H:%M") }}
+      </div>
+    </div>
+
+    <table class="accounts-table" style="margin-bottom:10px;">
+      <thead><tr><th>계정</th><th>상태</th><th>그룹 가입</th><th>메시지 수</th><th>비고</th></tr></thead>
+      <tbody>
+      {% for p in item.participants %}
+      {% set label, cls = participant_status_labels.get(p.status, (p.status, "trust-unknown")) %}
+      <tr>
+        <td>{{ p.account.display_name if p.account else "(삭제된 계정)" }}</td>
+        <td><span class="badge {{ cls }}">{{ label }}</span></td>
+        <td>{{ "가입됨" if p.joined_group else "대기중" }}</td>
+        <td>{{ p.message_count or 0 }}</td>
+        <td style="color:var(--text-faint);font-size:12px;">{{ p.error }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <details>
+      <summary class="hint" style="cursor:pointer;">최근 진행 기록 ({{ item.events|length }})</summary>
+      <div style="margin-top:8px;max-height:240px;overflow-y:auto;">
+        {% for e in item.events %}
+        <div class="log-item">
+          <strong>{{ e.day }}일차</strong> · {{ e.event_type }}
+          {% if e.account %} · {{ e.account.display_name }}{% endif %}
+          <div class="log-time">{{ e.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+          {% if e.detail %}<div style="margin-top:2px;color:var(--text-faint);">{{ e.detail }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+  </div>
+  {% else %}
+  <div class="section-card">
+    <div class="empty-state">아직 시작한 데우기가 없습니다.</div>
+  </div>
+  {% endfor %}
+
+</div>
+</div>
+{% endblock %}
