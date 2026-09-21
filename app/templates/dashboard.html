@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}계정 관리 · TeleOps{% endblock %}
+{% block page_title %}계정{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="document.getElementById('addAccountModal').classList.remove('hidden')">+ 계정 추가</button>
+{% endblock %}
+
+{% block content %}
+<div x-data="accountsPage()">
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">전체 계정</div>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card clean">
+      <div class="stat-label">정상</div>
+      <div class="stat-value">{{ stats.clean }}</div>
+    </div>
+    <div class="stat-card limited">
+      <div class="stat-label">제한</div>
+      <div class="stat-value">{{ stats.limited }}</div>
+    </div>
+    <div class="stat-card banned">
+      <div class="stat-label">차단</div>
+      <div class="stat-value">{{ stats.banned }}</div>
+    </div>
+  </div>
+
+  <form method="get" action="/" class="filter-row">
+    <a href="/" class="chip {{ 'active' if not active_category else '' }}">전체</a>
+    {% for c in categories %}
+    <a href="/?category={{ c.id }}" class="chip {{ 'active' if active_category == c.id else '' }}"
+       style="{% if active_category == c.id %}background:{{ c.color }}22;color:{{ c.color }};border-color:transparent;{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+    <input class="search-input" style="margin-left:auto;width:220px;" type="text" name="q" value="{{ q }}" placeholder="이름, 아이디, 전화번호 검색">
+  </form>
+
+  <div class="filter-row">
+    <button class="btn btn-sm" :disabled="selected.length===0" @click="openModal('bulkEdit')">✏️ 일괄 프로필 변경 (<span x-text="selected.length"></span>)</button>
+    <button class="btn btn-sm" :disabled="selected.length===0" @click="openModal('bulkPhoto')">🖼 일괄 사진 변경</button>
+    <button class="btn btn-sm" :disabled="selected.length===0" @click="submitForm('spamCheckForm')">🛡 스팸 체크</button>
+    <button class="btn btn-sm btn-danger" :disabled="selected.length===0" @click="if(confirm('선택한 계정을 삭제할까요? 세션 파일은 휴지통으로 이동됩니다.')) submitForm('deleteForm')">삭제</button>
+  </div>
+
+  <div class="table-card">
+    {% if accounts %}
+    <table class="accounts-table">
+      <thead>
+        <tr>
+          <th style="width:36px;"><input type="checkbox" class="checkbox" @change="toggleAll($event)"></th>
+          <th>계정</th>
+          <th>전화번호</th>
+          <th>신뢰도</th>
+          <th>카테고리</th>
+          <th>마지막 체크</th>
+          <th style="text-align:right;">작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for account in accounts %}
+        <tr>
+          <td><input type="checkbox" class="checkbox row-check" value="{{ account.id }}" @change="toggle({{ account.id }}, $event)"></td>
+          <td>
+            <a href="/accounts/{{ account.id }}" class="account-name-cell" style="text-decoration:none;color:inherit;">
+              {% if account.avatar_path %}
+              <img class="avatar" src="{{ account.avatar_path }}">
+              {% else %}
+              <div class="avatar">{{ (account.display_name or "?")[0] }}</div>
+              {% endif %}
+              <div>
+                <div class="account-name">{{ account.display_name }}</div>
+                {% if account.username %}<div class="account-username">@{{ account.username }}</div>{% endif %}
+              </div>
+            </a>
+          </td>
+          <td>{{ account.phone or "-" }}</td>
+          <td>
+            {% set label, cls = trust_labels.get(account.trust_status, trust_labels["unknown"]) %}
+            <span class="badge {{ cls }}">{{ label }}</span>
+            {% if account.status == "error" %}<span class="badge trust-banned" title="{{ account.last_error }}">오류</span>{% endif %}
+          </td>
+          <td>
+            {% for c in account.categories %}
+            <span class="category-pill" style="border-color:{{ c.color }}55;color:{{ c.color }};"><span class="category-dot" style="background:{{ c.color }};"></span>{{ c.name }}</span>
+            {% endfor %}
+          </td>
+          <td style="color:var(--text-faint);font-size:12.5px;">
+            {{ account.last_checked_at.strftime("%m-%d %H:%M") if account.last_checked_at else "-" }}
+          </td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <form method="post" action="/accounts/{{ account.id }}/spam-check">
+                <button class="btn btn-sm" type="submit">체크</button>
+              </form>
+              <a class="btn btn-sm" href="/accounts/{{ account.id }}">상세</a>
+              <form method="post" action="/accounts/delete" onsubmit="return confirm('삭제하시겠습니까?')">
+                <input type="hidden" name="account_ids" value="{{ account.id }}">
+                <button class="btn btn-sm btn-danger" type="submit">삭제</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <h3>등록된 계정이 없습니다</h3>
+      <p>우측 상단의 "계정 추가" 버튼으로 .session 파일을 업로드하세요.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <form id="deleteForm" method="post" action="/accounts/delete"></form>
+  <form id="spamCheckForm" method="post" action="/accounts/spam-check/bulk"></form>
+
+  <div class="modal-backdrop" x-show="modal==='bulkEdit'" x-cloak style="display:none;">
+    <div class="modal" @click.outside="closeModal()">
+      <h3>일괄 프로필 변경</h3>
+      <p class="hint">선택한 <span x-text="selected.length"></span>개 계정에 적용됩니다. 비워두면 해당 항목은 변경되지 않습니다.</p>
+      <form id="bulkEditForm" method="post" action="/accounts/bulk-edit">
+        <div class="field">
+          <label>이름 (First name)</label>
+          <input class="text-input" type="text" name="first_name" placeholder="변경하지 않으려면 비워두세요">
+        </div>
+        <div class="field">
+          <label>성 (Last name)</label>
+          <input class="text-input" type="text" name="last_name" placeholder="변경하지 않으려면 비워두세요">
+        </div>
+        <div class="field">
+          <label>소개 (Bio)</label>
+          <textarea class="text-input" name="about" rows="3" placeholder="변경하지 않으려면 비워두세요"></textarea>
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn" @click="closeModal()">취소</button>
+        <button class="btn btn-primary" @click="submitForm('bulkEditForm')">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" x-show="modal==='bulkPhoto'" x-cloak style="display:none;">
+    <div class="modal" @click.outside="closeModal()">
+      <h3>일괄 프로필 사진 변경</h3>
+      <p class="hint">선택한 <span x-text="selected.length"></span>개 계정의 프로필 사진을 동일하게 변경합니다.</p>
+      <form id="bulkPhotoForm" method="post" action="/accounts/bulk-photo" enctype="multipart/form-data">
+        <div class="field">
+          <label>사진 선택</label>
+          <input class="text-input" type="file" name="photo" accept="image/*" required>
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn" @click="closeModal()">취소</button>
+        <button class="btn btn-primary" @click="submitForm('bulkPhotoForm')">적용</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="addAccountModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>계정 추가</h3>
+    <p class="hint">Telethon으로 생성된 .session 파일을 업로드하세요. 여러 개를 한 번에 선택할 수 있습니다.</p>
+    <form method="post" action="/accounts/upload" enctype="multipart/form-data">
+      <div class="field">
+        <input class="text-input" type="file" name="files" accept=".session" multiple required>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" onclick="document.getElementById('addAccountModal').classList.add('hidden')">취소</button>
+        <button class="btn btn-primary" type="submit">업로드</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

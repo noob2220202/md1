@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}TeleOps{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script defer src="/static/js/app.js"></script>
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="app-body">
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">✈</span>
+      <span class="brand-name">TeleOps</span>
+    </div>
+    <nav class="nav">
+      <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">계정</a>
+      <a href="/categories" class="nav-item {{ 'active' if request.url.path == '/categories' else '' }}">카테고리</a>
+      <a href="/settings" class="nav-item {{ 'active' if request.url.path == '/settings' else '' }}">설정</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p>개인용 인스턴스 · SQLite</p>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+    <main class="content">
+      {% if request.query_params.get('msg') %}
+      <div class="toast toast-{{ request.query_params.get('msg_type', 'success') }}" x-data="{show:true}" x-show="show" x-init="setTimeout(() => show=false, 4500)">
+        {{ request.query_params.get('msg') }}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

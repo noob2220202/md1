@@ -1,0 +1,7 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+telethon==1.36.0
+SQLAlchemy==2.0.35
+python-multipart==0.0.9
+Jinja2==3.1.4
+pydantic-settings==2.5.2

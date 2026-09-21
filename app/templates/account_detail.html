@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ account.display_name }} · TeleOps{% endblock %}
+{% block page_title %}<a href="/" style="color:var(--text-faint);text-decoration:none;">계정</a> / {{ account.display_name }}{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+  {% if account.avatar_path %}
+  <img class="detail-avatar" src="{{ account.avatar_path }}">
+  {% else %}
+  <div class="detail-avatar" style="display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--text-dim);">{{ (account.display_name or "?")[0] }}</div>
+  {% endif %}
+  <div>
+    <div class="detail-name">{{ account.display_name }}</div>
+    <div class="detail-meta">
+      {% if account.username %}@{{ account.username }} · {% endif %}{{ account.phone or "전화번호 없음" }}
+    </div>
+  </div>
+  <div style="margin-left:auto;">
+    {% set label, cls = trust_labels.get(account.trust_status, trust_labels["unknown"]) %}
+    <span class="badge {{ cls }}" style="font-size:13px;padding:6px 14px;">{{ label }}</span>
+  </div>
+</div>
+
+{% if account.last_error %}
+<div class="toast toast-error">최근 오류: {{ account.last_error }}</div>
+{% endif %}
+
+<div class="detail-grid">
+<div>
+
+  <div class="section-card">
+    <div class="section-title">프로필 수정</div>
+    <form method="post" action="/accounts/{{ account.id }}/edit">
+      <div class="field">
+        <label>이름 (First name)</label>
+        <input class="text-input" type="text" name="first_name" value="{{ account.first_name }}">
+      </div>
+      <div class="field">
+        <label>성 (Last name)</label>
+        <input class="text-input" type="text" name="last_name" value="{{ account.last_name }}">
+      </div>
+      <div class="field">
+        <label>소개 (Bio)</label>
+        <textarea class="text-input" name="about" rows="3">{{ account.about }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">저장</button>
+    </form>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">프로필 사진</div>
+    <form method="post" action="/accounts/{{ account.id }}/photo" enctype="multipart/form-data" style="display:flex;gap:10px;align-items:center;">
+      <input class="text-input" type="file" name="photo" accept="image/*" required>
+      <button class="btn btn-primary" type="submit">변경</button>
+    </form>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">카테고리</div>
+    <form method="post" action="/accounts/{{ account.id }}/categories">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        {% for c in categories %}
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+          <input class="checkbox" type="checkbox" name="category_ids" value="{{ c.id }}" {{ 'checked' if c in account.categories else '' }}>
+          <span class="category-dot" style="background:{{ c.color }};"></span> {{ c.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary btn-sm" type="submit">저장</button>
+    </form>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">위험 구역</div>
+    <form method="post" action="/accounts/delete" onsubmit="return confirm('이 계정을 삭제하시겠습니까? 세션 파일은 휴지통 폴더로 이동됩니다.')">
+      <input type="hidden" name="account_ids" value="{{ account.id }}">
+      <button class="btn btn-danger" type="submit">계정 삭제</button>
+    </form>
+  </div>
+
+</div>
+<div>
+
+  <div class="section-card">
+    <div class="section-title">스팸 체크</div>
+    <form method="post" action="/accounts/{{ account.id }}/spam-check">
+      <button class="btn btn-primary" type="submit" style="width:100%;">지금 스팸 체크 실행</button>
+    </form>
+    <p class="hint" style="margin-top:10px;">공식 @SpamBot에 메시지를 보내 응답을 분석합니다.</p>
+
+    <div style="margin-top:16px;">
+      {% for check in account.spam_checks %}
+      <div class="log-item">
+        {% set label, cls = trust_labels.get(check.result, trust_labels["unknown"]) %}
+        <span class="badge {{ cls }}">{{ label }}</span>
+        <div class="log-time">{{ check.checked_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        {% if check.raw_response %}<div style="margin-top:4px;color:var(--text-faint);">{{ check.raw_response[:180] }}</div>{% endif %}
+      </div>
+      {% else %}
+      <p class="hint">아직 체크 기록이 없습니다.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">활동 로그</div>
+    {% for log in account.logs %}
+    <div class="log-item">
+      <strong>{{ log.action }}</strong>
+      <div class="log-time">{{ log.created_at.strftime("%Y-%m-%d %H:%M") }} · {{ log.detail }}</div>
+    </div>
+    {% else %}
+    <p class="hint">기록이 없습니다.</p>
+    {% endfor %}
+  </div>
+
+</div>
+</div>
+{% endblock %}

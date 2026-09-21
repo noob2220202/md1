@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}카테고리 · TeleOps{% endblock %}
+{% block page_title %}카테고리{% endblock %}
+
+{% block content %}
+<div class="detail-grid">
+  <div class="table-card">
+    <table class="accounts-table">
+      <thead><tr><th>이름</th><th>색상</th><th>계정 수</th><th style="text-align:right;">작업</th></tr></thead>
+      <tbody>
+      {% for c in categories %}
+      <tr>
+        <td><span class="category-pill" style="border-color:{{ c.color }}55;color:{{ c.color }};"><span class="category-dot" style="background:{{ c.color }};"></span>{{ c.name }}</span></td>
+        <td style="color:var(--text-faint);">{{ c.color }}</td>
+        <td>{{ c.accounts|length }}</td>
+        <td style="text-align:right;">
+          {% if not c.is_system %}
+          <form method="post" action="/categories/{{ c.id }}/delete" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
+            <button class="btn btn-sm btn-danger" type="submit">삭제</button>
+          </form>
+          {% else %}
+          <span class="hint">기본 카테고리</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4"><div class="empty-state">카테고리가 없습니다</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">새 카테고리</div>
+    <form method="post" action="/categories/create">
+      <div class="field">
+        <label>이름</label>
+        <input class="text-input" type="text" name="name" required>
+      </div>
+      <div class="field">
+        <label>색상</label>
+        <input type="color" name="color" value="#6d6dfb" style="width:60px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--card);padding:2px;">
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;">추가</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

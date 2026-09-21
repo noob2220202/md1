@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}설정 · TeleOps{% endblock %}
+{% block page_title %}설정{% endblock %}
+
+{% block content %}
+<div class="section-card" style="max-width:640px;">
+  <div class="section-title">Telegram API 설정</div>
+  {% if configured %}
+  <div class="toast toast-success">TELEGRAM_API_ID / TELEGRAM_API_HASH가 설정되어 있습니다.</div>
+  {% else %}
+  <div class="toast toast-error">API 정보가 설정되지 않았습니다.</div>
+  <p class="hint">
+    프로젝트 루트의 <code>.env</code> 파일에 아래 값을 채워주세요 (my.telegram.org 에서 발급):
+  </p>
+  <pre style="background:var(--bg);padding:12px;border-radius:8px;font-size:12.5px;color:var(--text-dim);">TELEGRAM_API_ID=123456
+TELEGRAM_API_HASH=your_api_hash</pre>
+  {% endif %}
+</div>
+
+<div class="section-card" style="max-width:640px;">
+  <div class="section-title">계정 추가 방법</div>
+  <p class="hint">
+    1) <code>python scripts/create_session.py &lt;전화번호&gt;</code> 로 새 세션 파일을 만들거나,
+    기존에 Telethon으로 만든 .session 파일이 있다면 그대로 사용하세요.<br><br>
+    2) 대시보드의 "계정 추가" 버튼으로 해당 .session 파일을 업로드하면 자동으로 프로필 정보를 가져옵니다.
+  </p>
+</div>
+{% endblock %}
