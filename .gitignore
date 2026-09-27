@@ -6,3 +6,4 @@ venv/
 .venv/
 *.session
 *.session-journal
+screenshots/
