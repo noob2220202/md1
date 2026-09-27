@@ -1,3 +1,12 @@
+/* Pretendard — SIL Open Font License 1.1 (https://github.com/orioncactus/pretendard) */
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/static/fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+
 :root {
   --bg: #08090c;
   --bg-elevated: #0e0f13;
@@ -36,7 +45,7 @@ body.app-body {
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Pretendard Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
@@ -66,8 +75,9 @@ body.app-body {
   width: 30px; height: 30px; border-radius: 9px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow: 0 4px 14px var(--accent-glow);
-  display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff;
+  display: flex; align-items: center; justify-content: center;
 }
+.brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-weight: 750; font-size: 15.5px; letter-spacing: -0.02em; }
 
 .nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
