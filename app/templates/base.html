@@ -6,10 +6,9 @@
 <title>{% block title %}TeleOps{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
-<script defer src="/static/js/app.js"></script>
 <link rel="stylesheet" href="/static/css/app.css">
+<script defer src="/static/js/app.js"></script>
+<script defer src="/static/js/alpine.min.js"></script>
 </head>
 <body class="app-body">
 <div class="app-shell">
@@ -19,14 +18,32 @@
       <span class="brand-name">TeleOps</span>
     </div>
     <nav class="nav">
-      <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">계정</a>
-      <a href="/groups" class="nav-item {{ 'active' if request.url.path == '/groups' else '' }}">그룹 가입</a>
-      <a href="/warmup" class="nav-item {{ 'active' if request.url.path == '/warmup' else '' }}">데우기</a>
-      <a href="/categories" class="nav-item {{ 'active' if request.url.path == '/categories' else '' }}">카테고리</a>
-      <a href="/settings" class="nav-item {{ 'active' if request.url.path == '/settings' else '' }}">설정</a>
+      <div class="nav-section-label">관리</div>
+      <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        계정
+      </a>
+      <a href="/categories" class="nav-item {{ 'active' if request.url.path == '/categories' else '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        카테고리
+      </a>
+      <div class="nav-section-label">액션</div>
+      <a href="/groups" class="nav-item {{ 'active' if request.url.path == '/groups' else '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3"/><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        그룹 가입
+      </a>
+      <a href="/warmup" class="nav-item {{ 'active' if request.url.path == '/warmup' else '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        데우기
+      </a>
+      <div class="nav-section-label">시스템</div>
+      <a href="/settings" class="nav-item {{ 'active' if request.url.path == '/settings' else '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        설정
+      </a>
     </nav>
     <div class="sidebar-footer">
-      <p>개인용 인스턴스 · SQLite</p>
+      개인용 인스턴스 · SQLite
     </div>
   </aside>
   <div class="main">
