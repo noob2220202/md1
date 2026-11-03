@@ -200,7 +200,6 @@ async def join_group(session_path: str, link: str) -> dict:
 
 
 async def wipe_account(session_path: str) -> dict:
-    """모든 그룹/채널 탈퇴, 모든 개인 대화 삭제, 저장된 연락처 전체 삭제. 되돌릴 수 없습니다."""
     client = make_client(session_path)
     await client.connect()
     try:
@@ -215,7 +214,7 @@ async def wipe_account(session_path: str) -> dict:
         async for dialog in client.iter_dialogs():
             entity = dialog.entity
             if isinstance(entity, User) and entity.is_self:
-                continue  # Saved Messages는 보존
+                continue
             label = getattr(entity, "title", None) or getattr(entity, "first_name", None) or str(dialog.id)
             try:
                 await client.delete_dialog(entity)

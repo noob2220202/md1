@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from . import models  # noqa: F401
+from . import models
 from .config import AVATARS_DIR, BASE_DIR
 from .database import Base, SessionLocal, engine
 from .models import Category

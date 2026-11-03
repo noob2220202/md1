@@ -36,8 +36,8 @@ class Account(Base):
     avatar_path = Column(String, default="")
     telegram_user_id = Column(String, default="")
 
-    status = Column(String, default="active")  # active, error
-    trust_status = Column(String, default="unknown")  # clean, limited, banned, unknown
+    status = Column(String, default="active")
+    trust_status = Column(String, default="unknown")
     last_error = Column(Text, default="")
 
     auto_reply_enabled = Column(Boolean, default=False)
@@ -90,7 +90,7 @@ class SpamCheck(Base):
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"))
-    result = Column(String, default="unknown")  # clean, limited, banned, unknown
+    result = Column(String, default="unknown")
     raw_response = Column(Text, default="")
     checked_at = Column(DateTime, default=dt.datetime.utcnow)
 
@@ -116,7 +116,7 @@ class GroupJoinLog(Base):
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"))
     invite_link = Column(String, default="")
     group_title = Column(String, default="")
-    status = Column(String, default="error")  # joined, already_member, invalid_link, flood_wait, error
+    status = Column(String, default="error")
     detail = Column(Text, default="")
     joined_at = Column(DateTime, default=dt.datetime.utcnow)
 
@@ -135,17 +135,17 @@ class WarmupCampaign(Base):
 
     id = Column(Integer, primary_key=True)
     group_link = Column(String, default="")
-    group_chat_id = Column(String, default="")  # resolved after first successful join
-    group_messages = Column(Text, default="")  # newline-separated pool
+    group_chat_id = Column(String, default="")
+    group_messages = Column(Text, default="")
     dm_messages = Column(Text, default="")
     reply_messages = Column(Text, default="")
     interval_min_minutes = Column(Integer, default=30)
     interval_max_minutes = Column(Integer, default=180)
 
-    day = Column(Integer, default=1)  # current global day of the campaign, 1-7
+    day = Column(Integer, default=1)
     day_started_at = Column(DateTime, default=dt.datetime.utcnow)
     started_at = Column(DateTime, default=dt.datetime.utcnow)
-    status = Column(String, default="running")  # running, completed, cancelled
+    status = Column(String, default="running")
 
     dm1_sender_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
     dm1_recipient_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
@@ -177,7 +177,7 @@ class WarmupParticipant(Base):
     campaign_id = Column(Integer, ForeignKey("warmup_campaigns.id", ondelete="CASCADE"))
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"))
 
-    status = Column(String, default="running")  # running, completed, failed, cancelled
+    status = Column(String, default="running")
     joined_group = Column(Boolean, default=False)
     join_due_at = Column(DateTime, nullable=True)
     joined_at = Column(DateTime, nullable=True)

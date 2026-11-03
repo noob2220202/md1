@@ -212,7 +212,7 @@ async def run_auto_reply_tick() -> None:
     db = SessionLocal()
     try:
         cutoff = dt.datetime.utcnow() - dt.timedelta(hours=6)
-        accounts = db.query(Account).filter(Account.auto_reply_enabled == True, Account.status == "active").all()  # noqa: E712
+        accounts = db.query(Account).filter(Account.auto_reply_enabled.is_(True), Account.status == "active").all()
         for account in accounts:
             recent = (
                 db.query(AutoReplyLog)
