@@ -1,43 +1,48 @@
 {% extends "base.html" %}
+{% set icons = "/static/icons/phosphor.svg" %}
+{% macro ic(name) %}<svg class="ic" aria-hidden="true"><use href="{{ icons }}#{{ name }}"></use></svg>{% endmacro %}
+
 {% block title %}설정 · TeleOps{% endblock %}
 {% block page_title %}설정{% endblock %}
+{% block page_sub %}<p class="page-sub">이 인스턴스의 텔레그램 연결과 계정 추가 동작을 정합니다.</p>{% endblock %}
 
 {% block content %}
-<div class="section-card" style="max-width:640px;">
-  <div class="section-title">Telegram API 설정</div>
-  {% if configured %}
-  <div class="toast toast-success">TELEGRAM_API_ID / TELEGRAM_API_HASH가 설정되어 있습니다.</div>
-  {% else %}
-  <div class="toast toast-error">API 정보가 설정되지 않았습니다.</div>
-  <p class="hint">
-    프로젝트 루트의 <code>.env</code> 파일에 아래 값을 채워주세요 (my.telegram.org 에서 발급):
-  </p>
-  <pre style="background:var(--bg);padding:12px;border-radius:8px;font-size:12.5px;color:var(--text-dim);">TELEGRAM_API_ID=123456
+<div class="narrow">
+
+  <section class="section-card">
+    <div class="section-head"><div><h2 class="section-title">Telegram API</h2><p class="section-desc">my.telegram.org 에서 발급한 앱 정보로 세션에 접속합니다.</p></div></div>
+    {% if configured %}
+    <div class="notice is-ok" role="status">{{ ic("check-circle-fill") }}<div><b>연결 정보가 설정되어 있습니다.</b> <code>TELEGRAM_API_ID</code> / <code>TELEGRAM_API_HASH</code></div></div>
+    {% else %}
+    <div class="notice is-bad" role="alert">{{ ic("warning-octagon-fill") }}<div><b>API 정보가 설정되지 않았습니다.</b> 스팸 체크와 프로필 변경을 하려면 먼저 설정하세요.</div></div>
+    <p class="hint settings-hint">프로젝트 루트의 <code>.env</code> 파일에 아래 값을 채워주세요 (my.telegram.org 에서 발급):</p>
+    <pre>TELEGRAM_API_ID=123456
 TELEGRAM_API_HASH=your_api_hash</pre>
-  {% endif %}
-</div>
+    {% endif %}
+  </section>
 
-<div class="section-card" style="max-width:640px;">
-  <div class="section-title">계정 추가 방법</div>
-  <p class="hint">
-    1) <code>python scripts/create_session.py &lt;전화번호&gt;</code> 로 새 세션 파일을 만들거나,
-    기존에 Telethon으로 만든 .session 파일이 있다면 그대로 사용하세요.<br><br>
-    2) 대시보드의 "계정 추가" 버튼으로 해당 .session 파일을 업로드하면 자동으로 프로필 정보를 가져옵니다.
-  </p>
-</div>
+  <section class="section-card">
+    <div class="section-head"><h2 class="section-title">계정 추가 방법</h2></div>
+    <ol class="steps">
+      <li><code>python scripts/create_session.py &lt;전화번호&gt;</code> 로 새 세션 파일을 만들거나, 기존에 Telethon으로 만든 <strong>.session</strong> 파일이 있다면 그대로 사용하세요.</li>
+      <li>대시보드의 <strong>계정 추가</strong> 버튼으로 해당 .session 파일을 업로드하면 자동으로 프로필 정보를 가져옵니다.</li>
+    </ol>
+  </section>
 
-<div class="section-card" style="max-width:640px;">
-  <div class="section-title">계정 추가 시 자동 초기화</div>
-  <p class="hint" style="margin-bottom:14px;">
-    켜두면 계정을 추가할 때마다 <strong style="color:var(--red);">모든 그룹/채널 탈퇴, 모든 개인 대화 삭제,
-    저장된 연락처 전체 삭제</strong>가 자동으로 실행됩니다. 되돌릴 수 없는 작업이니 주의하세요.
-  </p>
-  <form method="post" action="/settings/auto-wipe">
-    <label style="display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;margin-bottom:16px;">
-      <input class="checkbox" type="checkbox" name="auto_wipe_on_add" {{ 'checked' if auto_wipe else '' }}
-             onchange="this.form.submit()">
-      계정 추가 시 자동 초기화 {{ '(켜짐)' if auto_wipe else '(꺼짐)' }}
-    </label>
-  </form>
+  <section class="section-card">
+    <div class="section-head"><div><h2 class="section-title">계정 추가 시 자동 초기화</h2>
+      <p class="section-desc">켜두면 계정을 추가할 때마다 <strong class="is-bad">모든 그룹/채널 탈퇴, 모든 개인 대화 삭제, 저장된 연락처 전체 삭제</strong>가 자동으로 실행됩니다. 되돌릴 수 없는 작업이니 주의하세요.</p></div></div>
+    <form class="switch-row" method="post" action="/settings/auto-wipe">
+      <label class="switch">
+        <input type="checkbox" role="switch" name="auto_wipe_on_add" {{ 'checked' if auto_wipe else '' }} onchange="this.form.submit()">
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-text">
+          <span class="switch-title">계정 추가 시 자동 초기화</span>
+          <span class="switch-state{{ ' is-on' if auto_wipe }}">{{ '켜짐 · 추가 즉시 초기화됩니다' if auto_wipe else '꺼짐' }}</span>
+        </span>
+      </label>
+    </form>
+  </section>
+
 </div>
 {% endblock %}

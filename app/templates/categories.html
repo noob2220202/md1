@@ -1,48 +1,70 @@
 {% extends "base.html" %}
+{% set icons = "/static/icons/phosphor.svg" %}
+{% set presets = [
+  ("#3e63dd", "파랑"), ("#12a594", "청록"), ("#46a758", "초록"), ("#e2a336", "황토"),
+  ("#f76b15", "주황"), ("#e5484d", "빨강"), ("#d6409f", "분홍"), ("#8e4ec6", "보라"), ("#8d8676", "회갈"),
+] %}
+{% macro ic(name) %}<svg class="ic" aria-hidden="true"><use href="{{ icons }}#{{ name }}"></use></svg>{% endmacro %}
+
 {% block title %}카테고리 · TeleOps{% endblock %}
 {% block page_title %}카테고리{% endblock %}
+{% block page_sub %}<p class="page-sub">계정을 브랜드·업종별로 묶어 대시보드에서 걸러 봅니다. 카테고리 <span class="num">{{ categories|length }}</span>개</p>{% endblock %}
 
 {% block content %}
-<div class="detail-grid">
-  <div class="table-card">
-    <table class="accounts-table">
-      <thead><tr><th>이름</th><th>색상</th><th>계정 수</th><th style="text-align:right;">작업</th></tr></thead>
+<div class="detail-grid is-split">
+  <section class="section-card">
+    <div class="section-head"><h2 class="section-title">전체 카테고리</h2><span class="section-aside">계정 수 기준</span></div>
+    {% if categories %}
+    <table class="accounts-table cat-table">
+      <thead><tr><th>이름</th><th class="c-hex">색상</th><th class="t-num">계정 수</th><th class="t-end"><span class="sr-only">작업</span></th></tr></thead>
       <tbody>
       {% for c in categories %}
       <tr>
-        <td><span class="category-pill" style="border-color:{{ c.color }}55;color:{{ c.color }};"><span class="category-dot" style="background:{{ c.color }};"></span>{{ c.name }}</span></td>
-        <td style="color:var(--text-faint);">{{ c.color }}</td>
-        <td>{{ c.accounts|length }}</td>
-        <td style="text-align:right;">
+        <td><a class="cat-name" href="/?category={{ c.id }}"><span class="swatch" style="--c:{{ c.color }}"></span>{{ c.name }}</a></td>
+        <td class="c-hex"><span class="when">{{ c.color|lower }}</span></td>
+        <td class="t-num"><span class="num">{{ c.accounts|length }}</span>개</td>
+        <td class="t-end">
           {% if not c.is_system %}
-          <form method="post" action="/categories/{{ c.id }}/delete" style="display:inline;" onsubmit="return confirm('삭제하시겠습니까?')">
-            <button class="btn btn-sm btn-danger" type="submit">삭제</button>
+          <form method="post" action="/categories/{{ c.id }}/delete" onsubmit="return confirm('삭제하시겠습니까?')">
+            <button class="btn btn-sm btn-danger" type="submit">{{ ic("trash") }}삭제</button>
           </form>
           {% else %}
-          <span class="hint">기본 카테고리</span>
+          <span class="cat-system">기본 카테고리</span>
           {% endif %}
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="4"><div class="empty-state">카테고리가 없습니다</div></td></tr>
       {% endfor %}
       </tbody>
     </table>
-  </div>
+    {% else %}
+    <div class="empty-state"><span>{{ ic("tag") }}카테고리가 없습니다.</span></div>
+    {% endif %}
+  </section>
 
-  <div class="section-card">
-    <div class="section-title">새 카테고리</div>
-    <form method="post" action="/categories/create">
+  <section class="section-card">
+    <div class="section-head"><div><h2 class="section-title">새 카테고리</h2><p class="section-desc">이름과 표시 색을 정합니다.</p></div></div>
+    <form method="post" action="/categories/create" x-data="colorPicker('{{ presets[0][0] }}')">
+      <label class="field"><span class="label">이름</span>
+        <input class="text-input" type="text" name="name" required placeholder="예: 패션, 여행" autocomplete="off" x-model="label"></label>
       <div class="field">
-        <label>이름</label>
-        <input class="text-input" type="text" name="name" required>
+        <span class="label" id="colorLabel">색상</span>
+        <div class="color-field">
+          <div class="swatches" role="group" aria-labelledby="colorLabel">
+            {% for hex, name in presets %}
+            <button class="swatch-btn" type="button" style="--c:{{ hex }}" :class="{ 'is-on': is('{{ hex }}') }" :aria-pressed="is('{{ hex }}')" @click="color = '{{ hex }}'" title="{{ name }}" aria-label="{{ name }} {{ hex }}"></button>
+            {% endfor %}
+          </div>
+          <div class="color-custom">
+            <label class="color-native" title="직접 고르기">
+              <input type="color" name="color" value="{{ presets[0][0] }}" x-model="color" aria-label="색상 직접 고르기">
+            </label>
+            <span class="color-hex"><span class="hint">직접 고르기</span><span class="mono" x-text="color">{{ presets[0][0] }}</span></span>
+            <span class="color-preview" aria-hidden="true"><span class="tag"><span class="swatch" :style="{ '--c': color }" style="--c:{{ presets[0][0] }}"></span><span x-text="label.trim() || '미리보기'">미리보기</span></span></span>
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label>색상</label>
-        <input type="color" name="color" value="#6d6dfb" style="width:60px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--card);padding:2px;">
-      </div>
-      <button class="btn btn-primary" type="submit" style="width:100%;">추가</button>
+      <button class="btn btn-primary btn-block" type="submit">{{ ic("plus") }}카테고리 추가</button>
     </form>
-  </div>
+  </section>
 </div>
 {% endblock %}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96" role="img" aria-label="TeleOps">
+  <title>TeleOps</title>
+  <symbol id="mark" viewBox="0 0 24 24">
+    <rect x="2" y="3.44" width="20" height="6" rx="1.25" style="fill:var(--logo-signal,#d64a1f)"/>
+    <rect x="2" y="11.69" width="8.875" height="8.875" rx="1.25" style="fill:var(--logo-ink,#1c1b18)"/>
+    <path d="M13.125 11.69H22A8.875 8.875 0 0 1 13.125 20.565Z" style="fill:var(--logo-ink,#1c1b18)"/>
+  </symbol>
+  <use href="#mark"/>
+</svg>

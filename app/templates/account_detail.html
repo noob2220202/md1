@@ -1,169 +1,250 @@
 {% extends "base.html" %}
-{% block title %}{{ account.display_name }} · TeleOps{% endblock %}
-{% block page_title %}<a href="/" style="color:var(--text-faint);text-decoration:none;">계정</a> / {{ account.display_name }}{% endblock %}
+{% set icons = "/static/icons/phosphor.svg" %}
+{% set trust_meta = {
+  "trust-clean": ("ok", "check-circle-fill"),
+  "trust-limited": ("warn", "warning-fill"),
+  "trust-banned": ("bad", "prohibit-fill"),
+  "trust-unknown": ("unk", "circle-dashed-bold"),
+} %}
+{% set join_labels = {
+  "joined": ("가입 완료", "trust-clean"),
+  "already_member": ("이미 가입됨", "trust-unknown"),
+  "flood_wait": ("대기 필요", "trust-limited"),
+} %}
+{% set warmup_labels = {
+  "completed": ("완료", "trust-clean"),
+  "failed": ("실패", "trust-banned"),
+  "cancelled": ("취소됨", "trust-unknown"),
+} %}
+{% set label, trust_cls = trust_labels.get(account.trust_status, trust_labels["unknown"]) %}
+{% set kind, glyph = trust_meta.get(trust_cls, ("unk", "circle-dashed-bold")) %}
+{% set name = account|acct_name %}
+
+{% macro ic(name, cls="") %}<svg class="ic{{ ' ' ~ cls if cls }}" aria-hidden="true"><use href="{{ icons }}#{{ name }}"></use></svg>{% endmacro %}
+
+{% macro avatar(a) -%}
+{%- if a.avatar_path -%}<img class="avatar" src="{{ a.avatar_path }}" alt="">
+{%- else -%}<span class="avatar {{ a.id|avatar_tone }}" aria-hidden="true">{{ a|acct_initial }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro trust(status) -%}
+{%- set t_label, t_cls = trust_labels.get(status, trust_labels["unknown"]) -%}
+{%- set t_kind, t_glyph = trust_meta.get(t_cls, ("unk", "circle-dashed-bold")) -%}
+<span class="trust {{ t_kind }}">{{ ic(t_glyph) }}{{ t_label }}</span>
+{%- endmacro %}
+
+{% macro spam_record(check) %}
+<div class="log-item">
+  <div class="log-row">{{ trust(check.result) }}<time class="log-time">{{ check.checked_at.strftime("%Y-%m-%d %H:%M") }}</time></div>
+  {% if check.raw_response %}<p class="log-quote">{{ check.raw_response[:180] }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{% block title %}{{ name }} · TeleOps{% endblock %}
+{% block mobile_actions %}
+<button class="icon-btn" type="submit" form="spamCheckForm" aria-label="스팸 체크 실행" title="스팸 체크 실행">{{ ic("shield-check") }}</button>
+{% endblock %}
+
+{% block page_head %}
+<nav class="crumbs" aria-label="경로">
+  <a href="/">{{ ic("caret-left") }}계정</a><span aria-hidden="true">/</span><span class="here">{{ name }}</span>
+</nav>
+<header class="profile-head">
+  {{ avatar(account) }}
+  <div class="profile-id">
+    <div class="profile-title">
+      <h1 class="profile-name">{{ name }}</h1>
+      <div class="profile-badges">
+        <span class="status-pill {{ kind }}">{{ ic(glyph) }}{{ label }}</span>
+        {% if account.status == "error" %}<span class="status-pill is-flag" title="{{ account.last_error }}">{{ ic("warning-octagon-fill") }}오류</span>{% endif %}
+        {% if account.auto_reply_enabled %}<span class="status-pill plain">{{ ic("chat-circle-dots") }}자동 답장 켜짐</span>{% endif %}
+      </div>
+    </div>
+    <div class="profile-meta">
+      <span>{{ "@" ~ account.username if account.username else "아이디 없음" }}</span>
+      {% if account.phone %}<span class="phone">{{ account.phone|phone }}</span>{% else %}<span>전화번호 없음</span>{% endif %}
+    </div>
+  </div>
+</header>
+{% if account.last_error %}
+<div class="notice is-bad profile-notice" role="alert">
+  {{ ic("warning-octagon-fill") }}
+  <div><b>{{ "세션 오류" if account.status == "error" else "최근 오류" }}</b> · {{ account.last_error }}</div>
+</div>
+{% endif %}
+<dl class="facts">
+  <div class="fact"><dt>세션</dt><dd class="{{ 'is-bad' if account.status == 'error' }}">{{ "오류" if account.status == "error" else "활성" }}</dd></div>
+  <div class="fact"><dt>마지막 체크</dt>
+    {% if account.last_checked_at %}<dd><span class="when">{{ account.last_checked_at.strftime("%m-%d %H:%M") }}</span></dd>{% else %}<dd class="is-nil">기록 없음</dd>{% endif %}
+  </div>
+  <div class="fact"><dt>가입한 그룹</dt><dd><span class="num">{{ account.group_joins|length }}</span>개</dd></div>
+  <div class="fact"><dt>데우기 참여</dt><dd><span class="num">{{ account.warmup_participations|length }}</span>회</dd></div>
+</dl>
+{% endblock %}
 
 {% block content %}
-<div class="detail-header">
-  {% if account.avatar_path %}
-  <img class="detail-avatar" src="{{ account.avatar_path }}">
-  {% else %}
-  <div class="detail-avatar" style="display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--text-dim);">{{ (account.display_name or "?")[0] }}</div>
-  {% endif %}
-  <div>
-    <div class="detail-name">{{ account.display_name }}</div>
-    <div class="detail-meta">
-      {% if account.username %}@{{ account.username }} · {% endif %}{{ account.phone or "전화번호 없음" }}
+<div class="detail-grid is-profile">
+  <section class="section-card is-spam">
+    <div class="section-head"><div><h2 class="section-title">스팸 체크</h2><p class="section-desc">공식 <span class="mono">@SpamBot</span>에 메시지를 보내 응답을 분석합니다.</p></div></div>
+    <form id="spamCheckForm" method="post" action="/accounts/{{ account.id }}/spam-check">
+      <button class="btn btn-primary btn-block" type="submit">{{ ic("shield-check") }}지금 스팸 체크 실행</button>
+    </form>
+    {% set checks = account.spam_checks %}
+    {% if checks %}
+    <div class="log-sub">기록 <span class="num">{{ checks|length }}</span>건</div>
+    <div>
+      {% for check in checks[:3] %}{{ spam_record(check) }}{% endfor %}
     </div>
-  </div>
-  <div style="margin-left:auto;display:flex;gap:8px;">
-    {% if account.auto_reply_enabled %}
-    <span class="badge trust-clean" style="font-size:13px;padding:6px 14px;">자동 답장 켜짐</span>
+    {% if checks|length > 3 %}
+    <details class="log-more">
+      <summary class="hint">이전 기록 {{ checks|length - 3 }}건 더 보기</summary>
+      <div>{% for check in checks[3:] %}{{ spam_record(check) }}{% endfor %}</div>
+    </details>
     {% endif %}
-    {% set label, cls = trust_labels.get(account.trust_status, trust_labels["unknown"]) %}
-    <span class="badge {{ cls }}" style="font-size:13px;padding:6px 14px;">{{ label }}</span>
-  </div>
-</div>
+    {% else %}
+    <div class="empty-state log-empty"><span>{{ ic("shield-check") }}아직 체크 기록이 없습니다.</span></div>
+    {% endif %}
+  </section>
 
-{% if account.last_error %}
-<div class="toast toast-error">최근 오류: {{ account.last_error }}</div>
-{% endif %}
+  <div class="col col-main">
 
-<div class="detail-grid">
-<div>
+    <section class="section-card" x-data="{ n: {{ (account.about or '')|length }} }">
+      <div class="section-head"><div><h2 class="section-title">프로필 수정</h2><p class="section-desc">텔레그램에 표시되는 이름과 소개를 바꿉니다.</p></div></div>
+      <form method="post" action="/accounts/{{ account.id }}/edit">
+        <div class="form-grid">
+          <label class="field"><span class="label">이름<small>First name</small></span>
+            <input class="text-input" type="text" name="first_name" value="{{ account.first_name or '' }}"></label>
+          <label class="field"><span class="label">성<small>Last name</small></span>
+            <input class="text-input" type="text" name="last_name" value="{{ account.last_name or '' }}"></label>
+          <label class="field span-2"><span class="label">소개<small>Bio</small></span>
+            <textarea class="text-input" name="about" rows="3" placeholder="소개가 비어 있습니다" @input="n = $event.target.value.length">{{ account.about or '' }}</textarea>
+            <span class="field-foot"><span>텔레그램 소개는 최대 70자입니다.</span><span class="counter" :class="{ 'is-over': n > 70 }"><span x-text="n">{{ (account.about or '')|length }}</span> / 70</span></span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">프로필 저장</button>
+          <span class="form-note">변경 사항은 바로 텔레그램에 반영됩니다.</span>
+        </div>
+      </form>
+    </section>
 
-  <div class="section-card">
-    <div class="section-title">프로필 수정</div>
-    <form method="post" action="/accounts/{{ account.id }}/edit">
-      <div class="field">
-        <label>이름 (First name)</label>
-        <input class="text-input" type="text" name="first_name" value="{{ account.first_name }}">
-      </div>
-      <div class="field">
-        <label>성 (Last name)</label>
-        <input class="text-input" type="text" name="last_name" value="{{ account.last_name }}">
-      </div>
-      <div class="field">
-        <label>소개 (Bio)</label>
-        <textarea class="text-input" name="about" rows="3">{{ account.about }}</textarea>
-      </div>
-      <button class="btn btn-primary" type="submit">저장</button>
-    </form>
-  </div>
-
-  <div class="section-card">
-    <div class="section-title">프로필 사진</div>
-    <form method="post" action="/accounts/{{ account.id }}/photo" enctype="multipart/form-data" style="display:flex;gap:10px;align-items:center;">
-      <input class="text-input" type="file" name="photo" accept="image/*" required>
-      <button class="btn btn-primary" type="submit">변경</button>
-    </form>
-  </div>
-
-  <div class="section-card">
-    <div class="section-title">카테고리</div>
-    <form method="post" action="/accounts/{{ account.id }}/categories">
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-        {% for c in categories %}
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
-          <input class="checkbox" type="checkbox" name="category_ids" value="{{ c.id }}" {{ 'checked' if c in account.categories else '' }}>
-          <span class="category-dot" style="background:{{ c.color }};"></span> {{ c.name }}
+    <section class="section-card">
+      <div class="section-head"><div><h2 class="section-title">프로필 사진</h2><p class="section-desc">새 사진을 올리면 현재 사진을 대체합니다.</p></div></div>
+      <form class="photo-grid" method="post" action="/accounts/{{ account.id }}/photo" enctype="multipart/form-data" x-data="fileDrop()">
+        <div class="photo-now">{{ avatar(account) }}</div>
+        <label class="dropzone" :class="{ 'is-over': over, 'has-file': names.length }" @dragover="over = true" @dragleave="over = false" @drop="over = false">
+          <span class="dz-icon"><img x-show="preview" :src="preview" alt="" x-cloak><span x-show="!preview">{{ ic("upload-simple") }}</span></span>
+          <span class="dz-text">
+            <span class="dz-title" x-show="!names.length"><span class="dz-drag">이미지를 끌어다 놓거나 </span><u>파일 선택</u></span>
+            <span class="dz-title" x-show="names.length" x-text="names[0]" x-cloak></span>
+            <span class="dz-hint" x-text="names.length ? '사진 변경을 눌러 적용하세요' : 'JPG · PNG · 정사각형 권장'">JPG · PNG · 정사각형 권장</span>
+          </span>
+          <input type="file" name="photo" accept="image/*" required @change="pick($event)" aria-label="새 프로필 사진 선택">
         </label>
+        <span class="photo-cap">현재</span>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">사진 변경</button>
+          <span class="form-note">텔레그램 프로필 사진이 바로 바뀝니다.</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="section-card" x-data="{ n: {{ account.categories|length }} }">
+      <div class="section-head">
+        <div><h2 class="section-title">카테고리</h2><p class="section-desc">대시보드 필터와 일괄 작업에 쓰입니다.</p></div>
+        {% if categories %}<span class="section-aside">선택 <span class="num" x-text="n">{{ account.categories|length }}</span>개</span>{% endif %}
+      </div>
+      {% if categories %}
+      <form method="post" action="/accounts/{{ account.id }}/categories" @change="n = $el.querySelectorAll('input:checked').length">
+        <div class="toggles">
+          {% for c in categories %}
+          <label class="toggle" style="--c:{{ c.color }}">
+            <input type="checkbox" name="category_ids" value="{{ c.id }}" {{ 'checked' if c in account.categories }}>
+            <span class="swatch"></span>{{ c.name }}{{ ic("check-bold", "tick") }}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">카테고리 저장</button></div>
+      </form>
+      {% else %}
+      <div class="empty-state"><span>{{ ic("tag") }}아직 만든 카테고리가 없습니다.</span><a class="link" href="/categories">카테고리 추가 {{ ic("arrow-right") }}</a></div>
+      {% endif %}
+    </section>
+
+  </div>
+  <div class="col col-side">
+
+    <section class="section-card">
+      <div class="section-head"><h2 class="section-title">가입한 그룹</h2><span class="section-aside"><span class="num">{{ account.group_joins|length }}</span>개</span></div>
+      {% if account.group_joins %}
+      <div>
+        {% for log in account.group_joins %}
+        {% set j_label, j_cls = join_labels.get(log.status, ("실패", "trust-banned")) %}
+        <div class="log-item">
+          <div class="log-row"><span class="log-title">{{ log.group_title or log.invite_link }}</span><span class="badge {{ j_cls }}">{{ j_label }}</span></div>
+          <div class="log-time">{{ log.joined_at.strftime("%Y-%m-%d %H:%M") }}</div>
+          {% if log.detail %}<div class="log-detail">{{ log.detail }}</div>{% endif %}
+        </div>
         {% endfor %}
       </div>
-      <button class="btn btn-primary btn-sm" type="submit">저장</button>
-    </form>
-  </div>
+      {% else %}
+      <div class="empty-state"><span>{{ ic("users") }}아직 가입한 그룹이 없습니다.</span><a class="link" href="/groups">그룹 가입 {{ ic("arrow-right") }}</a></div>
+      {% endif %}
+    </section>
 
-  <div class="section-card">
-    <div class="section-title">위험 구역</div>
-    <form method="post" action="/accounts/{{ account.id }}/wipe" style="margin-bottom:10px;"
-          onsubmit="return confirm('모든 그룹/채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제를 지금 실행할까요? 되돌릴 수 없습니다.')">
-      <button class="btn btn-danger" type="submit" style="width:100%;">지금 전체 초기화 실행 (그룹/채널/대화/연락처)</button>
-    </form>
-    <form method="post" action="/accounts/delete" onsubmit="return confirm('이 계정을 삭제하시겠습니까? 세션 파일은 휴지통 폴더로 이동됩니다.')">
-      <input type="hidden" name="account_ids" value="{{ account.id }}">
-      <button class="btn btn-danger" type="submit">계정 삭제</button>
-    </form>
-  </div>
-
-</div>
-<div>
-
-  <div class="section-card">
-    <div class="section-title">스팸 체크</div>
-    <form method="post" action="/accounts/{{ account.id }}/spam-check">
-      <button class="btn btn-primary" type="submit" style="width:100%;">지금 스팸 체크 실행</button>
-    </form>
-    <p class="hint" style="margin-top:10px;">공식 @SpamBot에 메시지를 보내 응답을 분석합니다.</p>
-
-    <div style="margin-top:16px;">
-      {% for check in account.spam_checks %}
-      <div class="log-item">
-        {% set label, cls = trust_labels.get(check.result, trust_labels["unknown"]) %}
-        <span class="badge {{ cls }}">{{ label }}</span>
-        <div class="log-time">{{ check.checked_at.strftime("%Y-%m-%d %H:%M") }}</div>
-        {% if check.raw_response %}<div style="margin-top:4px;color:var(--text-faint);">{{ check.raw_response[:180] }}</div>{% endif %}
+    <section class="section-card">
+      <div class="section-head"><h2 class="section-title">데우기 참여 현황</h2><span class="section-aside"><span class="num">{{ account.warmup_participations|length }}</span>회</span></div>
+      {% if account.warmup_participations %}
+      <div>
+        {% for p in account.warmup_participations %}
+        {% set w_label, w_cls = warmup_labels.get(p.status, ("진행중 (" ~ p.campaign.day ~ "일차 / 7일차)", "trust-limited")) %}
+        <div class="log-item">
+          <div class="log-row"><span class="log-title">{{ p.campaign.group_link }}</span><span class="badge {{ w_cls }}">{{ w_label }}</span></div>
+          <div class="log-note">메시지 <span class="num">{{ p.message_count or 0 }}</span>개 전송</div>
+          {% if p.error %}<div class="log-detail">{{ p.error }}</div>{% endif %}
+        </div>
+        {% endfor %}
       </div>
       {% else %}
-      <p class="hint">아직 체크 기록이 없습니다.</p>
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="section-card">
-    <div class="section-title">가입한 그룹</div>
-    {% for log in account.group_joins %}
-    <div class="log-item">
-      {% if log.status == "joined" %}
-      <span class="badge trust-clean">가입 완료</span>
-      {% elif log.status == "already_member" %}
-      <span class="badge trust-unknown">이미 가입됨</span>
-      {% elif log.status == "flood_wait" %}
-      <span class="badge trust-limited">대기 필요</span>
-      {% else %}
-      <span class="badge trust-banned">실패</span>
+      <div class="empty-state"><span>{{ ic("fire") }}데우기에 참여한 적이 없습니다.</span><a class="link" href="/warmup">데우기 시작 {{ ic("arrow-right") }}</a></div>
       {% endif %}
-      <div style="margin-top:4px;">{{ log.group_title or log.invite_link }}</div>
-      <div class="log-time">{{ log.joined_at.strftime("%Y-%m-%d %H:%M") }}</div>
-      {% if log.detail %}<div style="margin-top:2px;color:var(--text-faint);">{{ log.detail }}</div>{% endif %}
-    </div>
-    {% else %}
-    <p class="hint">아직 가입한 그룹이 없습니다. <a href="/groups" style="color:var(--accent);">그룹 가입 페이지</a>에서 추가하세요.</p>
-    {% endfor %}
-  </div>
+    </section>
 
-  <div class="section-card">
-    <div class="section-title">데우기 참여 현황</div>
-    {% for p in account.warmup_participations %}
-    <div class="log-item">
-      {% if p.status == "completed" %}
-      <span class="badge trust-clean">완료</span>
-      {% elif p.status == "failed" %}
-      <span class="badge trust-banned">실패</span>
-      {% elif p.status == "cancelled" %}
-      <span class="badge trust-unknown">취소됨</span>
+    <section class="section-card">
+      <div class="section-head"><h2 class="section-title">활동 로그</h2><span class="section-aside"><span class="num">{{ account.logs|length }}</span>건</span></div>
+      {% if account.logs %}
+      <div class="timeline">
+        {% for log in account.logs %}
+        <div class="log-item">
+          <time class="log-time" datetime="{{ log.created_at.isoformat() }}" title="{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}"><b>{{ log.created_at.strftime("%m-%d") }}</b>{{ log.created_at.strftime("%H:%M") }}</time>
+          <div><code>{{ log.action }}</code></div>
+          <div class="log-detail">{{ log.detail }}</div>
+        </div>
+        {% endfor %}
+      </div>
       {% else %}
-      <span class="badge trust-limited">진행중 ({{ p.campaign.day }}일차 / 7일차)</span>
+      <div class="empty-state"><span>{{ ic("clock-counter-clockwise") }}기록이 없습니다.</span></div>
       {% endif %}
-      <div style="margin-top:4px;">{{ p.campaign.group_link }}</div>
-      <div class="log-time">메시지 {{ p.message_count or 0 }}개 전송{% if p.error %} · {{ p.error }}{% endif %}</div>
-    </div>
-    {% else %}
-    <p class="hint">데우기에 참여한 적이 없습니다. <a href="/warmup" style="color:var(--accent);">데우기 페이지</a>에서 시작하세요.</p>
-    {% endfor %}
-  </div>
+    </section>
 
-  <div class="section-card">
-    <div class="section-title">활동 로그</div>
-    {% for log in account.logs %}
-    <div class="log-item">
-      <strong>{{ log.action }}</strong>
-      <div class="log-time">{{ log.created_at.strftime("%Y-%m-%d %H:%M") }} · {{ log.detail }}</div>
-    </div>
-    {% else %}
-    <p class="hint">기록이 없습니다.</p>
-    {% endfor %}
-  </div>
+    <section class="section-card danger-zone">
+      <div class="section-head"><div><h2 class="section-title">{{ ic("warning-diamond") }}위험 구역</h2><p class="section-desc">아래 작업은 되돌릴 수 없습니다.</p></div></div>
+      <div class="danger-row">
+        <div><h3>전체 초기화</h3><p>모든 그룹·채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제를 지금 실행합니다.</p></div>
+        <form method="post" action="/accounts/{{ account.id }}/wipe"
+              onsubmit="return confirm('모든 그룹/채널 탈퇴, 개인 대화 삭제, 연락처 전체 삭제를 지금 실행할까요? 되돌릴 수 없습니다.')">
+          <button class="btn btn-danger" type="submit">{{ ic("broom") }}초기화 실행</button>
+        </form>
+      </div>
+      <div class="danger-row">
+        <div><h3>계정 삭제</h3><p>TeleOps에서 계정을 제거합니다. 세션 파일은 휴지통 폴더로 이동됩니다.</p></div>
+        <form method="post" action="/accounts/delete" onsubmit="return confirm('이 계정을 삭제하시겠습니까? 세션 파일은 휴지통 폴더로 이동됩니다.')">
+          <input type="hidden" name="account_ids" value="{{ account.id }}">
+          <button class="btn btn-danger" type="submit">{{ ic("trash") }}계정 삭제</button>
+        </form>
+      </div>
+    </section>
 
-</div>
+  </div>
 </div>
 {% endblock %}
